@@ -1,5 +1,5 @@
 # Discord Bot 🤖
-A simple discord bot with a multitude of features. Can serve as a template for different types of bots.
+A simple discord bot with a multitude of features. Can serve as a template for different types of bots. (Coded in Python using discord.py API)
 
 ## Features ⛲
 - Logs message edit history with before and after message
