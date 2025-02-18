@@ -1,15 +1,15 @@
 import os
+import json
+import random
+import requests
 from dotenv import load_dotenv
 
 import discord
 from discord.ext import commands
 from discord import app_commands
 
-import requests
-import json
 
-import random
-
+#load env variables
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 WEATHER_API = os.getenv('WEATHER')
@@ -17,6 +17,11 @@ ICON = os.getenv('ICON')
 
 LOG_FILE = "channels.json"
 
+
+
+
+
+#load json file (for channel ids)
 def load_channels():
     try:
         with open(LOG_FILE, "r") as f:
@@ -30,12 +35,17 @@ def save_channels():
     with open(LOG_FILE, "w") as f:
         json.dump(log_channels, f)
 
+
+
+
+
+#bot client
 class Client(commands.Bot):
     async def on_ready(self):
         print(f'{self.user} has arrived!')
 
         try:
-            guild = discord.Object(id=775417392489824267)
+            guild = discord.Object(id=775208915930447883)
             synced = await self.tree.sync(guild=guild)
             print(f'Synced {len(synced)} commands to guild {guild.id}')
         except Exception as e:
@@ -69,7 +79,6 @@ class Client(commands.Bot):
         embed.set_author(name=before.author.display_name, icon_url=before.author.avatar.url)
         await log_channel.send(embed=embed)
 
-
 intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
@@ -77,7 +86,16 @@ intents.messages = True
 client = Client(command_prefix="!", intents=intents)
 
 
-GUILD_ID = discord.Object(id=775417392489824267)
+GUILD_ID = discord.Object(id=775208915930447883)
+
+
+
+
+
+
+
+# MOD COMMANDS
+
 
 #hello command
 @client.tree.command(name="hello", description="Say hello", guild=GUILD_ID)
@@ -90,6 +108,7 @@ async def setChannel(interaction:discord.Interaction, channel: discord.TextChann
     log_channels[str(interaction.guild_id)] = channel.id
     save_channels()
     await interaction.response.send_message(f'Logs channel set to {channel.mention}')
+
 
 
 
@@ -115,6 +134,10 @@ async def missingPermissions(interaction:discord.Interaction, error):
 
 
 
+
+
+# FUN COMMANDS
+
 #echo command
 @client.tree.command(name="say", description="Echo your input", guild=GUILD_ID)
 async def sayEcho(interaction:discord.Interaction, echo: str):
@@ -132,6 +155,72 @@ async def embed(interaction:discord.Interaction, title: str, link: str):
 async def diceRoll(interaction:discord.Interaction, sides: int):
     result = random.randint(0, sides)
     await interaction.response.send_message(f'You rolled: {result}')
+
+
+phrases = [
+    "Yes",
+    "No",
+    "Ask again",
+    "Without a doubt",
+    "Not a chance LMAO",
+    "Most likely",
+    "Probably not",
+    "Concentrate and ask again",
+    "My sources are telling me no",
+    "Leaning towards yes"
+]
+
+#8ball command
+@client.tree.command(name="8ball", description="Ask the magic 8-ball a yes/no question, any question", guild=GUILD_ID)
+async def ball(interaction:discord.Interaction, question: str):
+    answer = random.choice(phrases)
+
+    embed = discord.Embed(
+        title="🎱 The Magic 8-Ball",
+        description=f"**{interaction.user.mention} asked:**\n*\"{question}\"*",
+        color=discord.Color.purple()
+    )
+    embed.add_field(name="🔮 Answer:", value=f"**{answer}**", inline=False)
+    embed.set_footer(text="Ask again later... or not 🤷‍♂️")
+    embed.set_author(name=interaction.user.display_name, icon_url=interaction.user.avatar.url if interaction.user.avatar else None)
+    await interaction.response.send_message(embed=embed)
+
+#rock, paper, scissors
+
+tools = ["Rock", "Paper", "Scissors"]
+win_conditions = {
+    "Rock": "Scissors",
+    "Paper": "Rock",
+    "Scissors": "Paper"
+}
+rps_emoji = {
+    "Rock":"🪨",
+    "Paper":"📄",
+    "Scissors":"✂️"
+}
+
+@client.tree.command(name="rps", description="Play Rock, Paper, Scissors with the bot.", guild=GUILD_ID)
+async def rps(interaction:discord.Interaction, choice: str):
+    choice = choice.capitalize()
+    answer = random.choice(tools)
+
+    if choice not in tools:
+        await interaction.response.send_message("Please select either **Rock, Paper, or Scissors**")
+    
+    if choice == answer:
+        result = "It's a tie!"
+    elif win_conditions[choice] == answer:
+        result = "You win! 🎉"
+    else:
+        result = "You lose! 💩"
+
+    embed = discord.Embed(title="🪨📄✂️ Rock, Paper, Scissors✂️📄🪨", color=discord.Color.dark_gold())
+
+    embed.add_field(name="Your Choice:", value=f'{choice} {rps_emoji[choice]}', inline=True)
+    embed.add_field(name="Bot's Choice:", value=f'{answer} {rps_emoji[answer]}', inline=True)
+    embed.add_field(name="Result:", value=f'**{result}**', inline=False)
+
+    await interaction.response.send_message(embed=embed)
 
 #weather command
 @client.tree.command(name="weather", description="Get the weather from a city", guild=GUILD_ID)
