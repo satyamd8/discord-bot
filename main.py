@@ -14,6 +14,10 @@ load_dotenv()
 TOKEN = os.getenv('TOKEN')
 WEATHER_API = os.getenv('WEATHER')
 ICON = os.getenv('ICON')
+GIF1 = os.getenv('GIF1')
+GIF2 = os.getenv('GIF2')
+GIF3 = os.getenv('GIF3')
+GIF4 = os.getenv('GIF4')
 
 LOG_FILE = "channels.json"
 
@@ -25,7 +29,7 @@ LOG_FILE = "channels.json"
 def load_channels():
     try:
         with open(LOG_FILE, "r") as f:
-            return json.load(f)
+            return {str(k): v for k, v in json.load(f).items()}
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
@@ -41,6 +45,7 @@ def save_channels():
 
 #bot client
 class Client(commands.Bot):
+#init
     async def on_ready(self):
         print(f'{self.user} has arrived!')
 
@@ -57,6 +62,14 @@ class Client(commands.Bot):
             return
         if message.content.startswith('hello'):
             await message.channel.send(f'hi there {message.author.mention}')
+        elif "dumb" in message.content:
+            await message.channel.send(GIF1)
+        elif "mars" in message.content.lower():
+            await message.channel.send(GIF4)
+
+        await self.process_commands(message)
+
+
 #show edits
     async def on_message_edit(self, before, after):
         log = log_channels.get(str(before.guild.id))
@@ -83,7 +96,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.messages = True
-client = Client(command_prefix="!", intents=intents)
+intents.voice_states = True
+client = Client(command_prefix=";", intents=discord.Intents.all())
 
 
 GUILD_ID = discord.Object(id=775208915930447883)
@@ -133,6 +147,27 @@ async def missingPermissions(interaction:discord.Interaction, error):
         await interaction.response.send_message("You don't have the right permissions")
 
 
+@client.command()
+async def ping(ctx):
+    await ctx.send("Pong!")
+
+#join and leave
+@client.command(name="join", description="Join a voice channel", guild=GUILD_ID)
+async def join(ctx):
+    channel = ctx.author.voice.channel
+    if channel:
+        await channel.connect()
+    else:
+        await ctx.send("You need to be in a voice channel to use this command.", ephemeral=True)
+
+@client.command(name="leave", description="Leave a voice channel", guild=GUILD_ID)
+async def leave(ctx):
+    if ctx.guild.voice_client:
+        await ctx.guild.voice_client.disconnect()
+    else:
+        await ctx.send("I'm not in a voice channel", ephemeral=True)
+
+
 
 
 
@@ -142,6 +177,11 @@ async def missingPermissions(interaction:discord.Interaction, error):
 @client.tree.command(name="say", description="Echo your input", guild=GUILD_ID)
 async def sayEcho(interaction:discord.Interaction, echo: str):
     await interaction.response.send_message(echo)
+
+#idiot command
+@client.tree.command(name="idiot", description="Use when someone says something so stupid", guild=GUILD_ID)
+async def sayEcho(interaction:discord.Interaction):
+    await interaction.response.send_message(GIF2)
 
 #embed command
 @client.tree.command(name="embed", description="Embed a link", guild=GUILD_ID)
@@ -245,7 +285,7 @@ async def getWeather(interaction:discord.Interaction, city: str):
         embed.add_field(name="Temperature", value=f"{temp}°F", inline=True)
         embed.add_field(name="Humidity", value=f"{humidity}%", inline=True)
         embed.add_field(name="Wind Speed", value=f"{wind_speed} mph", inline=True)
-        embed.set_footer(text="Powered by OpenWeather")
+        embed.set_footer(text="Powered by OpenWeather API")
 
         await interaction.response.send_message(embed=embed)
     else:
