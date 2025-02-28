@@ -8,6 +8,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
+import aiohttp
+
 
 #load env variables
 load_dotenv()
@@ -73,6 +75,9 @@ class Client(commands.Bot):
 #show edits
     async def on_message_edit(self, before, after):
         log = log_channels.get(str(before.guild.id))
+
+        if self.user:
+            return
 
         if not log:
             print("A log channel hasn't been set for this server yet")
@@ -183,6 +188,11 @@ async def sayEcho(interaction:discord.Interaction, echo: str):
 async def sayEcho(interaction:discord.Interaction):
     await interaction.response.send_message(GIF2)
 
+#wow command
+@client.tree.command(name="wow", description="Use when you can't believe someone said that", guild=GUILD_ID)
+async def sayEcho(interaction:discord.Interaction):
+    await interaction.response.send_message(GIF3)
+
 #embed command
 @client.tree.command(name="embed", description="Embed a link", guild=GUILD_ID)
 async def embed(interaction:discord.Interaction, title: str, link: str):
@@ -261,6 +271,15 @@ async def rps(interaction:discord.Interaction, choice: str):
     embed.add_field(name="Result:", value=f'**{result}**', inline=False)
 
     await interaction.response.send_message(embed=embed)
+
+#meme command
+@client.tree.command(name="meme", description="Get a random meme", guild=GUILD_ID)
+async def randomMeme(interaction:discord.Interaction):
+    async with aiohttp.ClientSession() as session:
+        async with interaction.channel.typing():
+            async with session.get("https://meme-api.com/gimme") as response:
+                data = await response.json()
+                await interaction.response.send_message(data['url'])
 
 #weather command
 @client.tree.command(name="weather", description="Get the weather from a city", guild=GUILD_ID)
