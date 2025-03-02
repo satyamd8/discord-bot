@@ -1,14 +1,16 @@
 import os
 import json
 import random
-import requests
-from dotenv import load_dotenv
+import requests # type: ignore
+from dotenv import load_dotenv # type: ignore
 
-import discord
-from discord.ext import commands
-from discord import app_commands
+import discord # type: ignore
+from discord.ext import commands # type: ignore
+from discord import app_commands # type: ignore
 
-import aiohttp
+import aiohttp # type: ignore
+
+from bs4 import BeautifulSoup # type: ignore
 
 
 #load env variables
@@ -196,8 +198,24 @@ async def sayEcho(interaction:discord.Interaction):
 #embed command
 @client.tree.command(name="embed", description="Embed a link", guild=GUILD_ID)
 async def embed(interaction:discord.Interaction, title: str, link: str):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(link) as response:
+            if response.status != 200:
+                return await interaction.response.send_message(f"Couldn't fetch the link: {response.status}", ephemeral=True)
+            html = await response.text()
+
+    soup = BeautifulSoup(html, "html.parser")
+    thumbnail = "none"
+
+    for meta in soup.find_all("meta"):
+        if meta.get("property") == "og:image" or meta.get("name") == "twitter:image":
+            thumbnail = meta.get("content")
+            break
+    if not thumbnail:
+        thumbnail = ICON
+
     embed = discord.Embed(title=title, url=link, color=discord.Color.random())
-    embed.set_thumbnail(url=ICON)
+    embed.set_thumbnail(url=thumbnail)
     await interaction.response.send_message(embed=embed)
 
 #roll command
