@@ -1,21 +1,25 @@
+#Library Imports
 import os
 import json
 import random
+import asyncio
+import time
+
+#Other Imports
 import requests # type: ignore
+import yt_dlp as youtube_dl # type: ignore
+import aiohttp # type: ignore
+from bs4 import BeautifulSoup # type: ignore
 from dotenv import load_dotenv # type: ignore
 
+#Discord Imports
 import discord # type: ignore
 from discord.ext import commands # type: ignore
 from discord import app_commands # type: ignore
 
-import aiohttp # type: ignore
-
-from bs4 import BeautifulSoup # type: ignore
-
-import asyncio # type: ignore
-import time
-import yt_dlp as youtube_dl # type: ignore
-
+# ---------------------------------
+# Environment Variables
+# ---------------------------------
 
 #load env variables
 load_dotenv()
@@ -26,11 +30,15 @@ GIF1 = os.getenv('GIF1')
 GIF2 = os.getenv('GIF2')
 GIF3 = os.getenv('GIF3')
 GIF4 = os.getenv('GIF4')
+SERVER_ID = os.getenv('SERVERID')
+GUILD_ID = discord.Object(id=SERVER_ID)
 
 LOG_FILE = "channels.json"
 
 
-#youtube music player
+# ---------------------
+# YouTube Music Player
+# ---------------------
 
 
 #ignore youtube_dl warnings
@@ -60,7 +68,9 @@ ffmpeg_options = {
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 
-#class to handle download and play
+# ---------------------
+# YouTube Downloader Class
+# ---------------------
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.2):
         super().__init__(source, volume)
@@ -82,6 +92,11 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
 
 
+# ---------------------
+# JSON Functions
+# ---------------------
+
+
 #load json file (for channel ids)
 def load_channels():
     try:
@@ -99,6 +114,16 @@ def save_channels():
 
 
 
+# ---------------------
+# Discord Bot Client
+# ---------------------
+
+
+intents = discord.Intents.default()
+intents.message_content = True
+intents.guilds = True
+intents.messages = True
+intents.voice_states = True
 
 #bot client
 class Client(commands.Bot):
@@ -152,62 +177,18 @@ class Client(commands.Bot):
         embed.set_author(name=before.author.display_name, icon_url=before.author.avatar.url)
         await log_channel.send(embed=embed)
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.guilds = True
-intents.messages = True
-intents.voice_states = True
 client = Client(command_prefix=";", intents=discord.Intents.all())
 
 
-GUILD_ID = discord.Object(id=775417392489824267)
 
 
 
 
 
+# ---------------------
+# Prefix Commands
+# ---------------------
 
-
-# MOD COMMANDS
-
-
-#hello command
-@client.tree.command(name="hello", description="Say hello", guild=GUILD_ID)
-async def sayHello(interaction:discord.Interaction):
-    await interaction.response.send_message("Hello")
-
-#set channel
-@client.tree.command(name="set", description="Set channel for logs", guild=GUILD_ID)
-async def setChannel(interaction:discord.Interaction, channel: discord.TextChannel):
-    log_channels[str(interaction.guild_id)] = channel.id
-    save_channels()
-    await interaction.response.send_message(f'Logs channel set to {channel.mention}')
-
-
-
-
-
-#kick and ban
-@client.tree.command(name="kick", description="Kick someone from the server", guild=GUILD_ID)
-@commands.has_permissions(kick_members=True)
-async def kick(interaction:discord.Interaction, member: discord.Member, reason: str="nothing"):
-    await member.kick(reason=reason)
-    await interaction.response.send_message(f'{member.display_name} was kicked for {reason}')
-
-@client.tree.command(name="ban", description="Ban someone from the server", guild=GUILD_ID)
-@commands.has_permissions(ban_members=True)
-async def ban(interaction:discord.Interaction, member: discord.Member, reason: str="nothing"):
-    await member.ban(reason=reason)
-    await interaction.response.send_message(f'{member.display_name} was banned for {reason}')
-
-@kick.error
-@ban.error
-async def missingPermissions(interaction:discord.Interaction, error):
-    if isinstance(error, commands.MissingPermissions):
-        await interaction.response.send_message("You don't have the right permissions")
-
-
-#prefix commands
 
 @client.command()
 async def ping(ctx):
@@ -230,7 +211,9 @@ async def leave(ctx):
         await ctx.send("I'm not in a voice channel", ephemeral=True)
 
 
+
 #music player
+
 
 #disconnect after 5 seconds of finishing song
 async def delayed_disconnect(voice_client):
@@ -294,7 +277,49 @@ async def stop(ctx):
 
 
 
-# FUN COMMANDS
+# ---------------------
+# Slash Commands
+# ---------------------
+
+
+#hello command
+@client.tree.command(name="hello", description="Say hello", guild=GUILD_ID)
+async def sayHello(interaction:discord.Interaction):
+    await interaction.response.send_message("Hello")
+
+#set channel
+@client.tree.command(name="set", description="Set channel for logs", guild=GUILD_ID)
+async def setChannel(interaction:discord.Interaction, channel: discord.TextChannel):
+    log_channels[str(interaction.guild_id)] = channel.id
+    save_channels()
+    await interaction.response.send_message(f'Logs channel set to {channel.mention}')
+
+
+
+#moderation
+
+#kick and ban
+@client.tree.command(name="kick", description="Kick someone from the server", guild=GUILD_ID)
+@commands.has_permissions(kick_members=True)
+async def kick(interaction:discord.Interaction, member: discord.Member, reason: str="nothing"):
+    await member.kick(reason=reason)
+    await interaction.response.send_message(f'{member.display_name} was kicked for {reason}')
+
+@client.tree.command(name="ban", description="Ban someone from the server", guild=GUILD_ID)
+@commands.has_permissions(ban_members=True)
+async def ban(interaction:discord.Interaction, member: discord.Member, reason: str="nothing"):
+    await member.ban(reason=reason)
+    await interaction.response.send_message(f'{member.display_name} was banned for {reason}')
+
+@kick.error
+@ban.error
+async def missingPermissions(interaction:discord.Interaction, error):
+    if isinstance(error, commands.MissingPermissions):
+        await interaction.response.send_message("You don't have the right permissions")
+
+
+
+#fun commands
 
 #echo command
 @client.tree.command(name="say", description="Echo your input", guild=GUILD_ID)
@@ -444,4 +469,6 @@ async def getWeather(interaction:discord.Interaction, city: str):
     else:
         await interaction.response.send_message(f"Couldn't find weather for '{city}'. Please check the city name and try again.")
 
+
+#run the bot
 client.run(TOKEN)
