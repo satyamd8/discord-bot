@@ -13,6 +13,7 @@ import aiohttp # type: ignore
 from bs4 import BeautifulSoup # type: ignore
 
 import asyncio # type: ignore
+import time
 import yt_dlp as youtube_dl # type: ignore
 
 
@@ -61,14 +62,14 @@ ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 #class to handle download and play
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
+    def __init__(self, source, *, data, volume=0.2):
         super().__init__(source, volume)
         self.data = data
         self.title = data.get('title')
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, url, *, loop=None, stream=True):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
@@ -159,7 +160,7 @@ intents.voice_states = True
 client = Client(command_prefix=";", intents=discord.Intents.all())
 
 
-GUILD_ID = discord.Object(id=775208915930447883)
+GUILD_ID = discord.Object(id=775417392489824267)
 
 
 
@@ -231,6 +232,12 @@ async def leave(ctx):
 
 #music player
 
+#disconnect after 5 seconds of finishing song
+async def delayed_disconnect(voice_client):
+    await asyncio.sleep(5)
+    if voice_client and voice_client.is_connected():
+        await voice_client.disconnect()
+
 #play command
 @client.command(name="play", description="Play a song from YouTube", guild=GUILD_ID)
 async def play(ctx, url):
@@ -245,7 +252,21 @@ async def play(ctx, url):
     async with ctx.typing():
         try:
             player = await YTDLSource.from_url(url, loop=client.loop, stream=False)
-            voice_client.play(player, after=lambda e: print(f'Player error: {e}') if e else None)
+
+            def after(error):
+                if error:
+                    print(f'Player error: {error}')
+                    return
+                print("Song ended, disconnecting in 5 seconds...")
+
+                # Properly schedule the disconnection
+                future = asyncio.run_coroutine_threadsafe(delayed_disconnect(voice_client), client.loop)
+                try:
+                    future.result()  # Ensures any exceptions are caught
+                except Exception as e:
+                    print(f"Error during disconnect: {e}")
+
+            voice_client.play(player, after=after)
     
             embed = discord.Embed(title="Now Playing", description=f"[{player.title}]({player.url})", color=discord.Color.random())
             await ctx.send(embed=embed)
