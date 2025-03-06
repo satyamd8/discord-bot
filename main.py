@@ -234,7 +234,7 @@ async def play(ctx, url):
 
     async with ctx.typing():
         try:
-            player = await YTDLSource.from_url(url, loop=client.loop, stream=False)
+            player = await YTDLSource.from_url(url, loop=client.loop, stream=True)
 
             def after(error):
                 if error:
