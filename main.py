@@ -16,6 +16,7 @@ from dotenv import load_dotenv # type: ignore
 import discord # type: ignore
 from discord.ext import commands # type: ignore
 from discord import app_commands # type: ignore
+from google import genai
 
 # ---------------------------------
 # Environment Variables
@@ -25,6 +26,7 @@ from discord import app_commands # type: ignore
 load_dotenv()
 TOKEN = os.getenv('TOKEN')
 WEATHER_API = os.getenv('WEATHER')
+GEMINI_API_KEY = os.getenv('AI')
 ICON = os.getenv('ICON')
 GIF1 = os.getenv('GIF1')
 GIF2 = os.getenv('GIF2')
@@ -63,7 +65,8 @@ ytdl_format_options = {
 
 #ensures audio only
 ffmpeg_options = {
-    'options': '-vn'
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn -b:a 128k -bufsize 256k'
 }
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
@@ -72,7 +75,7 @@ ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 # YouTube Downloader Class
 # ---------------------
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.2):
+    def __init__(self, source, *, data, volume=0.15):
         super().__init__(source, volume)
         self.data = data
         self.title = data.get('title')
@@ -468,6 +471,19 @@ async def getWeather(interaction:discord.Interaction, city: str):
         await interaction.response.send_message(embed=embed)
     else:
         await interaction.response.send_message(f"Couldn't find weather for '{city}'. Please check the city name and try again.")
+
+#ask ai command
+@client.tree.command(name="askai", description="Ask AI a question.", guild=GUILD_ID)
+async def askAI(interaction:discord.Interaction, question: str):
+    await interaction.response.defer()
+
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    instruction = "You're purpose is to answer questions as a discord bot. Keep any answers brief unless specified. Any messages must be under 2000 characters. Deflect any questions regarding the status of the conversation within the AI chat, since you're acting as a Discord bot and only operate within the context of the bot: "
+    response = client.models.generate_content(
+        model="gemini-2.5-flash", contents=instruction + question
+    )
+
+    await interaction.followup.send(f"**Question:** \n*{question}*. \n**Answer:** \n{response.text}" )
 
 
 #run the bot
